@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algorithm Visualizer - Pathfinding</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+
+        .container {
+            text-align: center;
+            width: 80%;
+        }
+
+        button {
+            margin: 10px;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(30, 20px);
+            grid-template-rows: repeat(20, 20px);
+            gap: 2px;
+            margin-top: 20px;
+        }
+
+        .cell {
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+
+        .wall {
+            background-color: #333;
+        }
+
+        .start {
+            background-color: green;
+        }
+
+        .end {
+            background-color: red;
+        }
+
+        .visited {
+            background-color: lightblue;
+        }
+
+        .path {
+            background-color: yellow;
+        }
+
+        #editor {
+            width: 100%;
+            height: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pathfinding Visualizer</h1>
+        <div>
+            <button id="runAStarBtn">Run A* Algorithm</button>
+            <button id="runDijkstraBtn">Run Dijkstra</button>
+            <button id="runBFSBtn">Run BFS</button>
+            <button id="clearGridBtn">Clear Grid</button>
+        </div>
+        <div id="grid"></div>
+    </div>
+
+    <script>
+        const gridWidth = 30;
+        const gridHeight = 20;
+        const grid = [];
+        let start = null;
+        let end = null;
+
+        const gridElement = document.getElementById("grid");
+        for (let i = 0; i < gridHeight; i++) {
+            const row = [];
+            for (let j = 0; j < gridWidth; j++) {
+                const cell = document.createElement("div");
+                cell.classList.add("cell");
+                cell.dataset.row = i;
+                cell.dataset.col = j;
+
+                cell.addEventListener("click", () => handleCellClick(i, j, cell));
+
+                gridElement.appendChild(cell);
+                row.push(cell);
+            }
+            grid.push(row);
+        }
+
+        function handleCellClick(row, col, cell) {
+            if (start === null) {
+                start = { row, col };
+                cell.classList.add("start");
+            } else if (end === null && (start.row !== row || start.col !== col)) {
+                end = { row, col };
+                cell.classList.add("end");
+            } else {
+            
+                if (!cell.classList.contains("start") && !cell.classList.contains("end")) {
+                    cell.classList.toggle("wall");
+                }
+            }
+        }
+
+        document.getElementById("clearGridBtn").addEventListener("click", () => {
+            location.reload();
+        });
+
+        function clearGridMarkers() {
+            for (let i = 0; i < gridHeight; i++) {
+                for (let j = 0; j < gridWidth; j++) {
+                    grid[i][j].classList.remove("visited", "path");
+                }
+            }
+        }
+        async function aStar() {
+            clearGridMarkers();  
+
+            if (!start || !end) return;
+
+            const openSet = [];
+            const closedSet = [];
+            const cameFrom = {};
+            const gScores = {};
+            const fScores = {};
+
+            openSet.push(start);
+            gScores[`${start.row},${start.col}`] = 0;
+            fScores[`${start.row},${start.col}`] = heuristic(start, end);
+
+            while (openSet.length > 0) {
+                openSet.sort((a, b) => fScores[`${a.row},${a.col}`] - fScores[`${b.row},${b.col}`]);
+                const current = openSet.shift();
+                closedSet.push(current);
+
+                if (current.row === end.row && current.col === end.col) {
+                    await reconstructPath(cameFrom, current);
+                    return;
+                }
+
+                const neighbors = [
+                    { row: current.row - 1, col: current.col }, 
+                    { row: current.row + 1, col: current.col }, 
+                    { row: current.row, col: current.col - 1 }, 
+                    { row: current.row, col: current.col + 1 }  
+                ];
+
+                for (const neighbor of neighbors) {
+                    if (isValidCell(neighbor)) {
+                        const tentativeG = gScores[`${current.row},${current.col}`] + 1;
+
+                        if (closedSet.some(cell => cell.row === neighbor.row && cell.col === neighbor.col)) {
+                            continue;
+                        }
+
+                        if (!gScores[`${neighbor.row},${neighbor.col}`] || tentativeG < gScores[`${neighbor.row},${neighbor.col}`]) {
+                            cameFrom[`${neighbor.row},${neighbor.col}`] = current;
+                            gScores[`${neighbor.row},${neighbor.col}`] = tentativeG;
+                            fScores[`${neighbor.row},${neighbor.col}`] = tentativeG + heuristic(neighbor, end);
+
+                            if (!openSet.some(cell => cell.row === neighbor.row && cell.col === neighbor.col)) {
+                                openSet.push(neighbor);
+                            }
+
+                            grid[neighbor.row][neighbor.col].classList.add("visited");
+                            await new Promise(resolve => setTimeout(resolve, 50)); 
+                        }
+                    }
+                }
+            }
+
+            function heuristic(a, b) {
+                return Math.abs(a.row - b.row) + Math.abs(a.col - b.col);
+            }
+
+            async function reconstructPath(cameFrom, current) {
+                while (current) {
+                    grid[current.row][current.col].classList.add("path");
+                    current = cameFrom[`${current.row},${current.col}`];
+                    await new Promise(resolve => setTimeout(resolve, 50)); 
+                }
+            }
+
+            function isValidCell(cell) {
+                return (
+                    cell.row >= 0 &&
+                    cell.row < gridHeight &&
+                    cell.col >= 0 &&
+                    cell.col < gridWidth &&
+                    !grid[cell.row][cell.col].classList.contains("wall")
+                );
+            }
+        }
+        async function dijkstra() {
+            clearGridMarkers();  
+
+            if (!start || !end) return;
+
+            const openSet = [];
+            const cameFrom = {};
+            const gScores = {};
+
+            openSet.push(start);
+            gScores[`${start.row},${start.col}`] = 0;
+
+            while (openSet.length > 0) {
+                openSet.sort((a, b) => gScores[`${a.row},${a.col}`] - gScores[`${b.row},${b.col}`]);
+                const current = openSet.shift();
+
+                if (current.row === end.row && current.col === end.col) {
+                    await reconstructPath(cameFrom, current);
+                    return;
+                }
+
+                const neighbors = [
+                    { row: current.row - 1, col: current.col }, 
+                    { row: current.row + 1, col: current.col }, 
+                    { row: current.row, col: current.col - 1 }, 
+                    { row: current.row, col: current.col + 1 }  
+                ];
+
+                for (const neighbor of neighbors) {
+                    if (isValidCell(neighbor)) {
+                        const tentativeG = gScores[`${current.row},${current.col}`] + 1;
+
+                        if (!gScores[`${neighbor.row},${neighbor.col}`] || tentativeG < gScores[`${neighbor.row},${neighbor.col}`]) {
+                            cameFrom[`${neighbor.row},${neighbor.col}`] = current;
+                            gScores[`${neighbor.row},${neighbor.col}`] = tentativeG;
+
+                            if (!openSet.some(cell => cell.row === neighbor.row && cell.col === neighbor.col)) {
+                                openSet.push(neighbor);
+                            }
+
+                            grid[neighbor.row][neighbor.col].classList.add("visited");
+                            await new Promise(resolve => setTimeout(resolve, 50)); 
+                        }
+                    }
+                }
+            }
+
+            async function reconstructPath(cameFrom, current) {
+                while (current) {
+                    grid[current.row][current.col].classList.add("path");
+                    current = cameFrom[`${current.row},${current.col}`];
+                    await new Promise(resolve => setTimeout(resolve, 50)); 
+                }
+            }
+
+            function isValidCell(cell) {
+                return (
+                    cell.row >= 0 &&
+                    cell.row < gridHeight &&
+                    cell.col >= 0 &&
+                    cell.col < gridWidth &&
+                    !grid[cell.row][cell.col].classList.contains("wall")
+                );
+            }
+        }
+        async function bfs() {
+            clearGridMarkers();  
+
+            if (!start || !end) return;
+
+            const queue = [];
+            const cameFrom = {};
+
+            queue.push(start);
+
+            while (queue.length > 0) {
+                const current = queue.shift();
+
+                if (current.row === end.row && current.col === end.col) {
+                    await reconstructPath(cameFrom, current);
+                    return;
+                }
+
+                const neighbors = [
+                    { row: current.row - 1, col: current.col }, 
+                    { row: current.row + 1, col: current.col }, 
+                    { row: current.row, col: current.col - 1 }, 
+                    { row: current.row, col: current.col + 1 }  
+                ];
+
+                for (const neighbor of neighbors) {
+                    if (isValidCell(neighbor)) {
+                        cameFrom[`${neighbor.row},${neighbor.col}`] = current;
+                        queue.push(neighbor);
+
+                        grid[neighbor.row][neighbor.col].classList.add("visited");
+                        await new Promise(resolve => setTimeout(resolve, 50)); 
+                    }
+                }
+            }
+
+            async function reconstructPath(cameFrom, current) {
+                while (current) {
+                    grid[current.row][current.col].classList.add("path");
+                    current = cameFrom[`${current.row},${current.col}`];
+                    await new Promise(resolve => setTimeout(resolve, 50)); 
+                }
+            }
+
+            function isValidCell(cell) {
+                return (
+                    cell.row >= 0 &&
+                    cell.row < gridHeight &&
+                    cell.col >= 0 &&
+                    cell.col < gridWidth &&
+                    !grid[cell.row][cell.col].classList.contains("wall")
+                );
+            }
+        }
+        document.getElementById("runAStarBtn").addEventListener("click", aStar);
+        document.getElementById("runDijkstraBtn").addEventListener("click", dijkstra);
+        document.getElementById("runBFSBtn").addEventListener("click", bfs);
+    </script>
+</body>
+</html>

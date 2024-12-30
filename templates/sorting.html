@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sorting Algorithm Visualizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+        .container {
+            text-align: center;
+        }
+        h1 {
+            font-size: 2rem;
+        }
+        button {
+            margin: 10px;
+            padding: 15px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #array {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .bar {
+            width: 30px;
+            height: 100px;
+            margin: 0 2px;
+            background-color: #3498db;
+            transition: all 0.5s ease;
+        }
+        .swapping {
+            background-color: #e74c3c;
+        }
+        .sorted {
+            background-color: #2ecc71;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sorting Algorithm Visualizer</h1>
+        <button id="generateArrayBtn">Generate New Array</button>
+        <button id="runBubbleSortBtn">Run Bubble Sort</button>
+        <button id="runSelectionSortBtn">Run Selection Sort</button>
+        <button id="runInsertionSortBtn">Run Insertion Sort</button>
+        <button id="runMergeSortBtn">Run Merge Sort</button>
+        <div id="array"></div>
+    </div>
+
+    <script>
+        let array = [];
+        const numBars = 50; 
+
+        function generateRandomArray() {
+            array = [];
+            for (let i = 0; i < numBars; i++) {
+                array.push(Math.floor(Math.random() * 100) + 10); 
+            }
+            visualizeArray();
+        }
+        function visualizeArray() {
+            const arrayContainer = document.getElementById('array');
+            arrayContainer.innerHTML = ''; 
+            array.forEach((value) => {
+                const bar = document.createElement('div');
+                bar.classList.add('bar');
+                bar.style.height = `${value * 3}px`; 
+                arrayContainer.appendChild(bar);
+            });
+        }
+
+        function swapBars(index1, index2) {
+            const bars = document.getElementsByClassName('bar');
+            const bar1 = bars[index1];
+            const bar2 = bars[index2];
+
+            const temp = bar1.style.height;
+            bar1.style.height = bar2.style.height;
+            bar2.style.height = temp;
+
+            const tempValue = array[index1];
+            array[index1] = array[index2];
+            array[index2] = tempValue;
+        }
+
+        async function bubbleSort() {
+            const bars = document.getElementsByClassName('bar');
+            let n = array.length;
+            let swapped;
+            for (let i = 0; i < n - 1; i++) {
+                swapped = false;
+
+                for (let j = 0; j < n - i - 1; j++) {
+               
+                    bars[j].classList.add('swapping');
+                    bars[j + 1].classList.add('swapping');
+
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                    if (array[j] > array[j + 1]) {
+                        swapBars(j, j + 1);
+                        swapped = true;
+                    }
+
+                    bars[j].classList.remove('swapping');
+                    bars[j + 1].classList.remove('swapping');
+                }
+
+                if (!swapped) break;
+            }
+
+            for (let i = 0; i < n; i++) {
+                bars[i].classList.add('sorted');
+            }
+        }
+        async function selectionSort() {
+            const bars = document.getElementsByClassName('bar');
+            let n = array.length;
+
+            for (let i = 0; i < n - 1; i++) {
+                let minIdx = i;
+                for (let j = i + 1; j < n; j++) {
+                    bars[j].classList.add('swapping');
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                    if (array[j] < array[minIdx]) {
+                        minIdx = j;
+                    }
+
+                    bars[j].classList.remove('swapping');
+                }
+
+                if (minIdx !== i) {
+                    swapBars(i, minIdx);
+                }
+
+                bars[i].classList.add('sorted');
+            }
+
+            for (let i = n - 1; i >= 0; i--) {
+                bars[i].classList.add('sorted');
+            }
+        }
+        async function insertionSort() {
+            const bars = document.getElementsByClassName('bar');
+            let n = array.length;
+
+            for (let i = 1; i < n; i++) {
+                let key = array[i];
+                let j = i - 1;
+                bars[i].classList.add('swapping');
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                while (j >= 0 && array[j] > key) {
+                    bars[j].classList.add('swapping');
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    swapBars(j + 1, j);
+                    j = j - 1;
+                }
+                bars[j + 1].classList.remove('swapping');
+                array[j + 1] = key;
+                bars[j + 1].classList.add('sorted');
+            }
+
+            for (let i = 0; i < n; i++) {
+                bars[i].classList.add('sorted');
+            }
+        }
+        async function mergeSort() {
+            const bars = document.getElementsByClassName('bar');
+            const n = array.length;
+
+            async function mergeSortHelper(array, left, right) {
+                if (left < right) {
+                    const mid = Math.floor((left + right) / 2);
+
+                    await mergeSortHelper(array, left, mid);
+                    await mergeSortHelper(array, mid + 1, right);
+                    await merge(array, left, mid, right);
+                }
+            }
+
+            async function merge(array, left, mid, right) {
+                const bars = document.getElementsByClassName('bar');
+                const n1 = mid - left + 1;
+                const n2 = right - mid;
+
+                const leftArr = array.slice(left, mid + 1);
+                const rightArr = array.slice(mid + 1, right + 1);
+
+                let i = 0;
+                let j = 0;
+                let k = left;
+
+                while (i < n1 && j < n2) {
+                    bars[k].classList.add('swapping');
+                    bars[k + 1].classList.add('swapping');
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                    if (leftArr[i] <= rightArr[j]) {
+                        array[k] = leftArr[i];
+                        swapBars(k, left + i);
+                        i++;
+                    } else {
+                        array[k] = rightArr[j];
+                        swapBars(k, mid + 1 + j);
+                        j++;
+                    }
+
+                    k++;
+                    bars[k].classList.remove('swapping');
+                }
+
+                while (i < n1) {
+                    array[k] = leftArr[i];
+                    swapBars(k, left + i);
+                    i++;
+                    k++;
+                }
+
+                while (j < n2) {
+                    array[k] = rightArr[j];
+                    swapBars(k, mid + 1 + j);
+                    j++;
+                    k++;
+                }
+            }
+
+            await mergeSortHelper(array, 0, n - 1);
+            for (let i = 0; i < n; i++) {
+                bars[i].classList.add('sorted');
+            }
+        }
+        document.getElementById('generateArrayBtn').addEventListener('click', generateRandomArray);
+        document.getElementById('runBubbleSortBtn').addEventListener('click', bubbleSort);
+        document.getElementById('runSelectionSortBtn').addEventListener('click', selectionSort);
+        document.getElementById('runInsertionSortBtn').addEventListener('click', insertionSort);
+        document.getElementById('runMergeSortBtn').addEventListener('click', mergeSort);
+        generateRandomArray();
+    </script>
+</body>
+</html>
