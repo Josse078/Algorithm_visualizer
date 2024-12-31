@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Visualizer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+        }
+        #output {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 300px;
+            overflow-y: scroll;
+            background: #f9f9f9;
+            margin-bottom: 20px;
+        }
+        #variables {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        #run-code-btn {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #run-code-btn:hover {
+            background-color: #0056b3;
+        }
+        .variable-item {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Code Visualizer</h1>
+    <div id="output"></div>
+    <div id="variables">
+        <h3>Variables</h3>
+        <div id="variable-list"></div>
+    </div>
+    <textarea id="code-input" rows="10" cols="50"></textarea><br>
+    <button id="run-code-btn">Run Code</button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
+    <script>
+        const socket = io.connect();
+        const outputElement = document.getElementById('output');
+        const variableListElement = document.getElementById('variable-list');
+        const runCodeBtn = document.getElementById('run-code-btn');
+        const codeInput = document.getElementById('code-input');
+
+        runCodeBtn.addEventListener('click', () => {
+            const code = codeInput.value;
+            socket.emit('run_code', { code: code });
+        });
+        socket.on('update_visualization', (data) => {
+            switch (data.type) {
+                case 'output':
+                    const outputLine = document.createElement('div');
+                    outputLine.textContent = data.value;
+                    outputElement.appendChild(outputLine);
+                    outputElement.scrollTop = outputElement.scrollHeight;  
+                    break;
+
+                case 'array':
+                    const arrayDiv = document.createElement('div');
+                    arrayDiv.textContent = `Array: [${data.values}] | Current Index: ${data.index} | Current Value: ${data.current_value}`;
+                    outputElement.appendChild(arrayDiv);
+                    outputElement.scrollTop = outputElement.scrollHeight;
+                    break;
+                case 'int':
+                    const intDiv = document.createElement('div');
+                    intDiv.textContent = `Int: ${data.value}`;
+                    outputElement.appendChild(intDiv);
+                    outputElement.scrollTop = outputElement.scrollHeight;
+                    break;
+                case 'string':
+                    const strDiv = document.createElement('div');
+                    strDiv.textContent = `String: ${data.value}`;
+                    outputElement.appendChild(strDiv);
+                    outputElement.scrollTop = outputElement.scrollHeight;
+                    break;
+                case 'dict':
+                    const dictDiv = document.createElement('div');
+                    dictDiv.textContent = `Dict: ${JSON.stringify(data.values, null, 2)}`;
+                    outputElement.appendChild(dictDiv);
+                    outputElement.scrollTop = outputElement.scrollHeight;
+                    break;
+                case 'error':
+                    const errorDiv = document.createElement('div');
+                    errorDiv.style.color = 'red';
+                    errorDiv.textContent = `Error: ${data.message}`;
+                    outputElement.appendChild(errorDiv);
+                    outputElement.scrollTop = outputElement.scrollHeight;
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>
