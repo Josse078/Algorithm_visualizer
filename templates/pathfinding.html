@@ -78,8 +78,8 @@
         <h1>Pathfinding Visualizer</h1>
         <div>
             <button id="runAStarBtn">Run A* Algorithm</button>
-            <button id="runDijkstraBtn">Run Dijkstra</button>
-            <button id="runBFSBtn">Run BFS</button>
+            <button id="runBFSBtn">Run BFS Algorithm</button>
+            <button id="runDijkstraBtn">Run Dijkstra Algorithm</button>
             <button id="clearGridBtn">Clear Grid</button>
         </div>
         <div id="grid"></div>
@@ -117,7 +117,6 @@
                 end = { row, col };
                 cell.classList.add("end");
             } else {
-            
                 if (!cell.classList.contains("start") && !cell.classList.contains("end")) {
                     cell.classList.toggle("wall");
                 }
@@ -135,7 +134,20 @@
                 }
             }
         }
+
         async function aStar() {
+            await runAlgorithmWithHeuristic(true);
+        }
+
+        async function bfs() {
+            await runAlgorithmWithHeuristic(false, true); 
+        }
+
+        async function dijkstra() {
+            await runAlgorithmWithHeuristic(false); 
+        }
+
+        async function runAlgorithmWithHeuristic(useHeuristic = false, isBFS = false) {
             clearGridMarkers();  
 
             if (!start || !end) return;
@@ -148,10 +160,13 @@
 
             openSet.push(start);
             gScores[`${start.row},${start.col}`] = 0;
-            fScores[`${start.row},${start.col}`] = heuristic(start, end);
+            fScores[`${start.row},${start.col}`] = useHeuristic ? heuristic(start, end) : 0;
 
             while (openSet.length > 0) {
-                openSet.sort((a, b) => fScores[`${a.row},${a.col}`] - fScores[`${b.row},${b.col}`]);
+                if (!isBFS) {
+                    openSet.sort((a, b) => fScores[`${a.row},${a.col}`] - fScores[`${b.row},${b.col}`]);
+                }
+
                 const current = openSet.shift();
                 closedSet.push(current);
 
@@ -178,7 +193,7 @@
                         if (!gScores[`${neighbor.row},${neighbor.col}`] || tentativeG < gScores[`${neighbor.row},${neighbor.col}`]) {
                             cameFrom[`${neighbor.row},${neighbor.col}`] = current;
                             gScores[`${neighbor.row},${neighbor.col}`] = tentativeG;
-                            fScores[`${neighbor.row},${neighbor.col}`] = tentativeG + heuristic(neighbor, end);
+                            fScores[`${neighbor.row},${neighbor.col}`] = tentativeG + (useHeuristic ? heuristic(neighbor, end) : 0);
 
                             if (!openSet.some(cell => cell.row === neighbor.row && cell.col === neighbor.col)) {
                                 openSet.push(neighbor);
@@ -213,128 +228,10 @@
                 );
             }
         }
-        async function dijkstra() {
-            clearGridMarkers();  
 
-            if (!start || !end) return;
-
-            const openSet = [];
-            const cameFrom = {};
-            const gScores = {};
-
-            openSet.push(start);
-            gScores[`${start.row},${start.col}`] = 0;
-
-            while (openSet.length > 0) {
-                openSet.sort((a, b) => gScores[`${a.row},${a.col}`] - gScores[`${b.row},${b.col}`]);
-                const current = openSet.shift();
-
-                if (current.row === end.row && current.col === end.col) {
-                    await reconstructPath(cameFrom, current);
-                    return;
-                }
-
-                const neighbors = [
-                    { row: current.row - 1, col: current.col }, 
-                    { row: current.row + 1, col: current.col }, 
-                    { row: current.row, col: current.col - 1 }, 
-                    { row: current.row, col: current.col + 1 }  
-                ];
-
-                for (const neighbor of neighbors) {
-                    if (isValidCell(neighbor)) {
-                        const tentativeG = gScores[`${current.row},${current.col}`] + 1;
-
-                        if (!gScores[`${neighbor.row},${neighbor.col}`] || tentativeG < gScores[`${neighbor.row},${neighbor.col}`]) {
-                            cameFrom[`${neighbor.row},${neighbor.col}`] = current;
-                            gScores[`${neighbor.row},${neighbor.col}`] = tentativeG;
-
-                            if (!openSet.some(cell => cell.row === neighbor.row && cell.col === neighbor.col)) {
-                                openSet.push(neighbor);
-                            }
-
-                            grid[neighbor.row][neighbor.col].classList.add("visited");
-                            await new Promise(resolve => setTimeout(resolve, 50)); 
-                        }
-                    }
-                }
-            }
-
-            async function reconstructPath(cameFrom, current) {
-                while (current) {
-                    grid[current.row][current.col].classList.add("path");
-                    current = cameFrom[`${current.row},${current.col}`];
-                    await new Promise(resolve => setTimeout(resolve, 50)); 
-                }
-            }
-
-            function isValidCell(cell) {
-                return (
-                    cell.row >= 0 &&
-                    cell.row < gridHeight &&
-                    cell.col >= 0 &&
-                    cell.col < gridWidth &&
-                    !grid[cell.row][cell.col].classList.contains("wall")
-                );
-            }
-        }
-        async function bfs() {
-            clearGridMarkers();  
-
-            if (!start || !end) return;
-
-            const queue = [];
-            const cameFrom = {};
-
-            queue.push(start);
-
-            while (queue.length > 0) {
-                const current = queue.shift();
-
-                if (current.row === end.row && current.col === end.col) {
-                    await reconstructPath(cameFrom, current);
-                    return;
-                }
-
-                const neighbors = [
-                    { row: current.row - 1, col: current.col }, 
-                    { row: current.row + 1, col: current.col }, 
-                    { row: current.row, col: current.col - 1 }, 
-                    { row: current.row, col: current.col + 1 }  
-                ];
-
-                for (const neighbor of neighbors) {
-                    if (isValidCell(neighbor)) {
-                        cameFrom[`${neighbor.row},${neighbor.col}`] = current;
-                        queue.push(neighbor);
-
-                        grid[neighbor.row][neighbor.col].classList.add("visited");
-                        await new Promise(resolve => setTimeout(resolve, 50)); 
-                    }
-                }
-            }
-
-            async function reconstructPath(cameFrom, current) {
-                while (current) {
-                    grid[current.row][current.col].classList.add("path");
-                    current = cameFrom[`${current.row},${current.col}`];
-                    await new Promise(resolve => setTimeout(resolve, 50)); 
-                }
-            }
-
-            function isValidCell(cell) {
-                return (
-                    cell.row >= 0 &&
-                    cell.row < gridHeight &&
-                    cell.col >= 0 &&
-                    cell.col < gridWidth &&
-                    !grid[cell.row][cell.col].classList.contains("wall")
-                );
-            }
-        }
         document.getElementById("runAStarBtn").addEventListener("click", aStar);
-        document.getElementById("runDijkstraBtn").addEventListener("click", dijkstra);
         document.getElementById("runBFSBtn").addEventListener("click", bfs);
+        document.getElementById("runDijkstraBtn").addEventListener("click", dijkstra);
     </script>
 </body>
 </html>

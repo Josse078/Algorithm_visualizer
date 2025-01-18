@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Advanced Python Code Visualizer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <!-- Add mermaid for flow diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+        
+        .editor-section {
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        
+        .CodeMirror {
+            height: 300px;
+            border: 1px solid #ddd;
+        }
+        
+        .visualization-section {
+            display: grid;
+            grid-template-rows: auto auto;
+            gap: 20px;
+        }
+        
+        .flow-diagram {
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 4px;
+            background: white;
+            min-height: 200px;
+        }
+        
+        .variables-panel {
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .current-line {
+            background-color: #ffeb3b50;
+        }
+        
+        .execution-controls {
+            margin: 10px 0;
+        }
+        
+        .control-button {
+            margin: 0 5px;
+            padding: 5px 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .output-box {
+            background: #1e1e1e;
+            color: #fff;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-family: monospace;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .variable-value {
+            font-family: monospace;
+            color: #4CAF50;
+        }
+        .variable-type {
+            color: #2196F3;
+            font-size: 0.8em;
+        }
+        .execution-controls {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+        .speed-control {
+            margin: 10px 0;
+        }
+        .history-navigation {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .execution-diagram {
+            margin-top: 20px;
+            padding: 20px;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .stack-frame {
+            border: 2px solid #2196F3;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            background: #f8f9fa;
+            position: relative;
+        }
+
+        .frame-title {
+            background: #2196F3;
+            color: white;
+            padding: 5px 10px;
+            margin: -10px -10px 10px -10px;
+            border-radius: 2px 2px 0 0;
+        }
+
+        .frame-variables {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 5px 15px;
+            padding: 5px;
+        }
+
+        .arrow {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 15px solid #2196F3;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .variable-name {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .variable-value {
+            font-family: monospace;
+            color: #4CAF50;
+        }
+
+        .return-value {
+            color: #f44336;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="editor-section">
+            <h3>Python Code Editor</h3>
+            <textarea id="code-editor">
+# Example code
+def calculate_sum(n):
+    total = 0
+    for i in range(n):
+        total += i
+    return total
+
+result = calculate_sum(5)
+print("Sum:", result)
+            </textarea>
+            <div class="execution-controls">
+                <button class="control-button" onclick="runCode()">Run</button>
+                <button class="control-button" onclick="stepForward()">Next Step</button>
+                <button class="control-button" onclick="stepBackward()">Previous Step</button>
+                <button class="control-button" onclick="resetVisualization()">Reset</button>
+            </div>
+        </div>
+        
+        <div class="visualization-section">
+            <div class="execution-diagram" id="executionDiagram"></div>
+            <div class="output-box" id="outputBox"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize CodeMirror
+        var editor = CodeMirror.fromTextArea(document.getElementById("code-editor"), {
+            mode: "python",
+            theme: "monokai",
+            lineNumbers: true,
+            indentUnit: 4
+        });
+
+        // Initialize mermaid
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+        
+        var socket = io();
+        var executionSteps = [];
+        var currentStep = -1;
+
+        socket.on('code_step', function(data) {
+            executionSteps.push(data);
+            currentStep = executionSteps.length - 1;
+            updateVisualization(data);
+        });
+
+        function updateVisualization(data) {
+            const diagram = document.getElementById('executionDiagram');
+            diagram.innerHTML = '';
+
+            // Create global frame
+            const globalFrame = createStackFrame('Global Frame');
+            diagram.appendChild(globalFrame);
+
+            // Add variables to appropriate frames
+            for (let [name, info] of Object.entries(data.variables)) {
+                if (data.function && data.function !== '<module>') {
+                    // Create function frame if we're in a function
+                    const functionFrame = createStackFrame(data.function);
+                    diagram.appendChild(createArrow());
+                    diagram.appendChild(functionFrame);
+                    addVariableToFrame(functionFrame, name, info);
+                } else {
+                    addVariableToFrame(globalFrame, name, info);
+                }
+            }
+
+            // Highlight current line in editor
+            editor.getAllMarks().forEach(mark => mark.clear());
+            editor.markText(
+                {line: data.line - 1, ch: 0},
+                {line: data.line, ch: editor.getLine(data.line - 1).length},
+                {className: 'current-line'}
+            );
+        }
+
+        function createStackFrame(title) {
+            const frame = document.createElement('div');
+            frame.className = 'stack-frame';
+            
+            const titleDiv = document.createElement('div');
+            titleDiv.className = 'frame-title';
+            titleDiv.textContent = title;
+            
+            const varsDiv = document.createElement('div');
+            varsDiv.className = 'frame-variables';
+            
+            frame.appendChild(titleDiv);
+            frame.appendChild(varsDiv);
+            return frame;
+        }
+
+        function createArrow() {
+            const arrowContainer = document.createElement('div');
+            arrowContainer.style.textAlign = 'center';
+            arrowContainer.style.padding = '5px';
+            
+            const arrow = document.createElement('div');
+            arrow.className = 'arrow';
+            
+            arrowContainer.appendChild(arrow);
+            return arrowContainer;
+        }
+
+        function addVariableToFrame(frame, name, info) {
+            const varsDiv = frame.querySelector('.frame-variables');
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'variable-name';
+            nameSpan.textContent = name;
+            
+            const valueSpan = document.createElement('span');
+            valueSpan.className = 'variable-value';
+            valueSpan.textContent = formatValue(info);
+            
+            varsDiv.appendChild(nameSpan);
+            varsDiv.appendChild(valueSpan);
+        }
+
+        function formatValue(info) {
+            if (info.type === 'list' || info.type === 'tuple') {
+                return `${info.type}[${info.value.join(', ')}]`;
+            } else if (info.type === 'dict') {
+                const entries = Object.entries(info.value)
+                    .map(([k, v]) => `${k}: ${v}`).join(', ');
+                return `{${entries}}`;
+            }
+            return info.value;
+        }
+
+        function runCode() {
+            executionSteps = [];
+            currentStep = -1;
+            document.getElementById('executionDiagram').innerHTML = '';
+            document.getElementById('outputBox').innerHTML = '';
+            socket.emit('run_code', { code: editor.getValue() });
+        }
+
+        function stepForward() {
+            if (currentStep < executionSteps.length - 1) {
+                currentStep++;
+                updateVisualization(executionSteps[currentStep]);
+            }
+        }
+
+        function stepBackward() {
+            if (currentStep > 0) {
+                currentStep--;
+                updateVisualization(executionSteps[currentStep]);
+            }
+        }
+
+        function resetVisualization() {
+            currentStep = -1;
+            document.getElementById('executionDiagram').innerHTML = '';
+            document.getElementById('outputBox').innerHTML = '';
+        }
+
+        socket.on('print_output', function(data) {
+            const outputBox = document.getElementById('outputBox');
+            outputBox.innerHTML += `<div>${data.content}</div>`;
+            outputBox.scrollTop = outputBox.scrollHeight;
+        });
+    </script>
+</body>
+</html>
