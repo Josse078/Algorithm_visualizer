@@ -1,0 +1,470 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+#editor {
+    width: 100%;
+    height: 300px;
+}
+
+#output {
+    margin: 20px;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    min-height: 50px;
+}
+
+#visualization-area {
+    margin-top: 20px;
+}
+
+.array-element {
+    display: inline-block;
+    margin: 5px;
+    padding: 10px;
+    background-color: lightblue;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.changed {
+    background-color: lightcoral;
+}
+
+.array-visualization {
+    margin: 10px;
+}
+
+.queue-element {
+    display: inline-block;
+    margin: 5px;
+    padding: 10px;
+    background-color: #ffeb3b;
+    position: relative;
+}
+
+.queue-element::after {
+    content: "→";
+    position: absolute;
+    right: -15px;
+}
+
+.queue-element:last-child::after {
+    content: "";
+}
+
+.grid-container {
+    display: inline-block;
+    border: 1px solid #ccc;
+    padding: 5px;
+    margin: 10px;
+}
+
+.grid-row {
+    display: flex;
+}
+
+.grid-cell {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: white;
+}
+
+.CodeMirror {
+    height: 300px;
+    border: 1px solid #ddd;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+    font-size: 14px;
+}
+
+.editor-container {
+    margin: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+button {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+.step-controls,
+.step-button,
+.array-element.swapping {
+    display: none;
+}
+
+.template-selector {
+    margin: 20px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    width: calc(100% - 40px);
+}
+
+select {
+    width: 100%;
+    padding: 8px;
+    font-size: 16px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    background-color: white;
+}
+
+.array-controls {
+    margin: 10px 0;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.step-button {
+    padding: 5px 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.step-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.execution-flow {
+    margin: 20px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: white;
+}
+
+.stack-frame {
+    border: 2px solid #2196F3;
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 4px;
+    background: #f8f9fa;
+    position: relative;
+}
+
+.frame-title {
+    background: #2196F3;
+    color: white;
+    padding: 5px 10px;
+    margin: -10px -10px 10px -10px;
+    border-radius: 2px 2px 0 0;
+}
+
+.arrow {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 15px solid #2196F3;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 5px 0;
+}
+
+.node-visited {
+    fill: #ff5722 !important;
+    transition: fill 0.3s ease;
+}
+
+.edge-visited {
+    stroke: #ff5722 !important;
+    stroke-width: 3px !important;
+    transition: all 0.3s ease;
+}
+
+.node-current {
+    fill: #4CAF50 !important;
+    transform: scale(1.2);
+    transition: all 0.3s ease;
+}
+
+.node-to-visit {
+    fill: #2196F3 !important;
+}
+
+.node-visited circle {
+    fill: #ff5722 !important;
+    transition: all 0.3s ease;
+}
+
+.node-current circle {
+    fill: #4CAF50 !important;
+    transform: scale(1.2);
+    transform-origin: center;
+    transition: all 0.3s ease;
+}
+
+.node-to-visit circle {
+    fill: #2196F3 !important;
+    transition: all 0.3s ease;
+}
+
+.execution-diagram {
+    margin-top: 20px;
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.frame-variables {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 5px 15px;
+    padding: 5px;
+}
+
+.variable-name {
+    font-weight: bold;
+    color: #333;
+}
+
+.variable-value {
+    font-family: monospace;
+    color: #4CAF50;
+}
+
+.return-value {
+    color: #f44336;
+    font-weight: bold;
+}
+
+.recursive-tree {
+    margin: 20px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.recursive-call {
+    margin-left: 20px;
+    padding: 8px;
+    border-left: 2px solid #2196F3;
+    position: relative;
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: all 0.3s ease;
+}
+
+.recursive-call.active {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.recursive-call::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 12px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #2196F3;
+}
+
+.recursive-result {
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+.recursive-args {
+    color: #666;
+    font-style: italic;
+}
+
+.binary-tree {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.tree-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.node-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #69b3a2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.node-circle.current {
+    background: #4CAF50;
+    transform: scale(1.2);
+}
+
+.tree-edge {
+    position: absolute;
+    background: #999;
+    height: 2px;
+    transition: all 0.3s ease;
+}
+
+.performance-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    background: white;
+    padding: 15px;
+    border-radius: 0 0 0 4px;
+    box-shadow: -2px 2px 5px rgba(0,0,0,0.1);
+    transition: height 0.3s ease;
+    overflow: hidden;
+}
+
+.minimize-button {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 5px;
+    font-size: 20px;
+    line-height: 1;
+}
+
+.minimize-button:hover {
+    color: #333;
+}
+
+.performance-panel.minimized {
+    height: 40px !important;
+}
+
+.performance-panel.minimized #profileData,
+.performance-panel.minimized #executionTime {
+    display: none;
+}
+
+.nav-button {
+    padding: 8px 15px;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.nav-button:hover {
+    background: #1976D2;
+}
+
+.nav-button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.speed-control {
+    margin: 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: #f5f5f5;
+    padding: 15px;
+    border-radius: 8px;
+    width: calc(100% - 30px);
+}
+
+.speed-control input[type="range"] {
+    flex-grow: 1;
+    height: 8px;
+    border-radius: 4px;
+    background: #ddd;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.speed-control input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #4CAF50;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+
+.speed-control input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+}
+
+.speed-label {
+    min-width: 120px;
+    font-weight: bold;
+}
+
+.speed-value {
+    min-width: 80px;
+    text-align: right;
+    color: #4CAF50;
+}
+
+.speed-preset {
+    padding: 5px 10px;
+    border: 1px solid #4CAF50;
+    border-radius: 4px;
+    background: white;
+    color: #4CAF50;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.speed-preset:hover {
+    background: #4CAF50;
+    color: white;
+}
+
+.loop-highlight {
+    background-color: rgba(255, 193, 7, 0.2);
+    border-left: 3px solid #ffc107;
+}
+
+.function-highlight {
+    background-color: rgba(33, 150, 243, 0.2);
+    border-left: 3px solid #2196f3;
+}
+
+.nested-highlight {
+    border-left-width: 6px;
+}
